@@ -285,7 +285,7 @@ namespace UnnamedCoin.Bitcoin.Features.Wallet.Controllers
             try
             {
                 var wallet = this.walletManager.RecoverWallet(request.Password, request.Name, request.Mnemonic,
-                    request.CreationDate, request.Passphrase, request.CoinType);
+                    request.CreationDate, request.Passphrase, request.CoinType == 0 ? null : request.CoinType);
 
                 SyncFromBestHeightForRecoveredWallets(request.CreationDate);
 
