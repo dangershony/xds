@@ -122,7 +122,10 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.miningCancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(this.nodeLifetime.ApplicationStopping);
 
-            this.openCLMiner = new OpenCLMiner(minerSettings, loggerFactory);
+            if (minerSettings.UseOpenCL)
+            {
+                this.openCLMiner = new OpenCLMiner(minerSettings, loggerFactory);
+            }
         }
 
         /// <inheritdoc />
@@ -291,14 +294,14 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             context.ExtraNonce = this.IncrementExtraNonce(block, context.ChainTip, context.ExtraNonce);
 
             var iterations = uint.MaxValue / (uint)this.minerSettings.OpenCLWorksizeSplit;
-            uint nonceStart = ((uint)context.ExtraNonce - 1) * iterations;
+            var nonceStart = ((uint)context.ExtraNonce - 1) * iterations;
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             var headerBytes = block.Header.ToBytes(this.network.Consensus.ConsensusFactory);
             var bits = block.Header.Bits.ToUInt256();
-            uint foundNonce = this.openCLMiner.FindPow(headerBytes, bits.ToBytes(), nonceStart, iterations);
+            var foundNonce = this.openCLMiner.FindPow(headerBytes, bits.ToBytes(), nonceStart, iterations);
 
             stopwatch.Stop();
 

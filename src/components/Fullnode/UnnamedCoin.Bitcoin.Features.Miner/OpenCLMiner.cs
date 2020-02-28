@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using Cloo;
 using Microsoft.Extensions.Logging;
 
@@ -30,15 +29,22 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.logger = loggerFactory.CreateLogger(this.GetType().FullName);
             var devices = ComputePlatform.Platforms.SelectMany(p => p.Devices).Where(d => d.Available && d.CompilerAvailable).ToList();
 
-            foreach (var device in devices)
+            if (!devices.Any())
             {
-                this.logger.LogInformation($"Found OpenCL Device: Name={device.Name}, MaxClockFrequency{device.MaxClockFrequency}");
+                this.logger.LogWarning($"No OpenCL Devices Found!");
             }
-
-            this.computeDevice = devices.FirstOrDefault(d => d.Name.Equals(minerSettings.OpenCLDevice, StringComparison.OrdinalIgnoreCase)) ?? devices.FirstOrDefault();
-            if (this.computeDevice != null)
+            else
             {
-                this.logger.LogInformation($"Selected OpenCL Device: Name={this.computeDevice.Name}");
+                foreach (var device in devices)
+                {
+                    this.logger.LogInformation($"Found OpenCL Device: Name={device.Name}, MaxClockFrequency{device.MaxClockFrequency}");
+                }
+
+                this.computeDevice = devices.FirstOrDefault(d => d.Name.Equals(minerSettings.OpenCLDevice, StringComparison.OrdinalIgnoreCase)) ?? devices.FirstOrDefault();
+                if (this.computeDevice != null)
+                {
+                    this.logger.LogInformation($"Using OpenCL Device: Name={this.computeDevice.Name}");
+                }
             }
         }
 

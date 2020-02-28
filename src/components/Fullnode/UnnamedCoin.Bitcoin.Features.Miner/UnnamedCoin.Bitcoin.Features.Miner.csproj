@@ -10,11 +10,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="OpenCL\Cloo.dll.config" />
     <None Remove="OpenCL\opencl_device_info.h" />
     <None Remove="OpenCL\opencl_misc.h" />
     <None Remove="OpenCL\opencl_sha2_common.h" />
     <None Remove="OpenCL\opencl_sha512.h" />
     <None Remove="OpenCL\sha512_miner.cl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Cloo.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
