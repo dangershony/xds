@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -91,6 +90,8 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <summary>The async loop we need to wait upon before we can shut down this feature.</summary>
         IAsyncLoop miningLoop;
 
+        OpenCLMiner openCLMiner;
+
         public PowMining(
             IAsyncProvider asyncProvider,
             IBlockProvider blockProvider,
@@ -120,6 +121,8 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.nodeLifetime = nodeLifetime;
             this.miningCancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(this.nodeLifetime.ApplicationStopping);
+
+            this.openCLMiner = new OpenCLMiner(minerSettings, loggerFactory);
         }
 
         /// <inheritdoc />
@@ -173,6 +176,8 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.miningLoop = null;
             this.miningCancellationTokenSource.Dispose();
             this.miningCancellationTokenSource = null;
+            this.openCLMiner?.Dispose();
+            this.openCLMiner = null;
         }
 
         /// <inheritdoc />
@@ -222,7 +227,6 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.blockProvider.BlockModified(previousHeader, block);
 
             Guard.Assert(block.Transactions[0].Inputs[0].ScriptSig.Length <= 100);
-
             return extraNonce;
         }
 
@@ -272,10 +276,56 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             return true;
         }
 
+        bool MineBlock(MineBlockContext context)
+        {
+            if (minerSettings.UseOpenCL && openCLMiner.CanMine())
+                return MineBlockOpenCL(context);
+            else
+                return MineBlockCpu(context);
+        }
+
+        bool MineBlockOpenCL(MineBlockContext context)
+        {
+            var block = context.BlockTemplate.Block;
+            block.Header.Nonce = 0;
+            context.ExtraNonce = this.IncrementExtraNonce(block, context.ChainTip, context.ExtraNonce);
+
+            var iterations = uint.MaxValue / (uint)this.minerSettings.OpenCLWorksizeSplit;
+            uint nonceStart = ((uint)context.ExtraNonce - 1) * iterations;
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            var headerBytes = block.Header.ToBytes(this.network.Consensus.ConsensusFactory);
+            var bits = block.Header.Bits.ToUInt256();
+            uint foundNonce = this.openCLMiner.FindPow(headerBytes, bits.ToBytes(), nonceStart, iterations);
+
+            stopwatch.Stop();
+
+            if (foundNonce > 0)
+            {
+                block.Header.Nonce = foundNonce;
+                if (block.Header.CheckProofOfWork())
+                {
+                    return true;
+                }
+            }
+
+            this.LogMiningInformation(context.ExtraNonce, iterations, stopwatch.Elapsed.TotalSeconds, block.Header.Bits.Difficulty, $"{this.openCLMiner.GetDeviceName()}");
+
+            if (context.ExtraNonce >= this.minerSettings.OpenCLWorksizeSplit)
+            {
+                block.Header.Time += 1;
+                context.ExtraNonce = 0;
+            }
+
+            return false;
+        }
+
         /// <summary>
         ///     Executes until the required work (difficulty) has been reached. This is the "mining" process.
         /// </summary>
-        bool MineBlock(MineBlockContext context)
+        bool MineBlockCpu(MineBlockContext context)
         {
             context.ExtraNonce = IncrementExtraNonce(context.BlockTemplate.Block, context.ChainTip, context.ExtraNonce);
 
@@ -338,14 +388,24 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
                     return true;
             }
 
-            var MHashedPerSec = Math.Round((totalNonce / stopwatch.Elapsed.TotalSeconds) / 1_000_000, 4);
-
-            var currentDifficulty = BigInteger.ValueOf((long)block.Header.Bits.Difficulty);
-            var MHashedPerSecTotal = (double)currentDifficulty.Multiply(Target.Pow256).Divide(Target.Difficulty1.ToBigInteger()).Divide(BigInteger.ValueOf(10 * 60)).LongValue / 1_000_000.0;
-
-            this.logger.LogInformation($"Difficulty={block.Header.Bits.Difficulty}, extraNonce={context.ExtraNonce}, hashes={totalNonce}, execution={stopwatch.Elapsed.TotalSeconds} sec, hash-rate={MHashedPerSec} MHash/sec ({threads} threads), network hash-rate ~{MHashedPerSecTotal} MHash/sec");
+            this.LogMiningInformation(context.ExtraNonce, totalNonce, stopwatch.Elapsed.TotalSeconds, block.Header.Bits.Difficulty, $"{threads} threads");
 
             return false;
+        }
+
+        private void LogMiningInformation(int extraNonce, long totalHashes, double totalSeconds, double difficultly, string minerInfo)
+        {
+            var MHashedPerSec = Math.Round((totalHashes / totalSeconds) / 1_000_000, 4);
+
+            var currentDifficulty = BigInteger.ValueOf((long)difficultly);
+            var MHashedPerSecTotal = currentDifficulty.Multiply(Target.Pow256)
+                                         .Divide(Target.Difficulty1.ToBigInteger()).Divide(BigInteger.ValueOf(10 * 60))
+                                         .LongValue / 1_000_000.0;
+
+            this.logger.LogInformation($"Difficulty={difficultly}, extraNonce={extraNonce}, " +
+                                       $"hashes={totalHashes}, execution={totalSeconds} sec, " +
+                                       $"hash-rate={MHashedPerSec} MHash/sec ({minerInfo}), " +
+                                       $"network hash-rate ~{MHashedPerSecTotal} MHash/sec");
         }
 
         private static bool CheckProofOfWork(byte[] header, uint nonce, uint256 bits)
