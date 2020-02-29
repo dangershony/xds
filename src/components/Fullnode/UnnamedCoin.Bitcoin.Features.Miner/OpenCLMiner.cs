@@ -117,7 +117,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             this.computeKernels.Clear();
             this.computeProgram?.Dispose();
             this.computeProgram = null;
-            this.computeContext.Dispose();
+            this.computeContext?.Dispose();
             this.computeContext = null;
         }
 
