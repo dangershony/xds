@@ -9,17 +9,17 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
 {
     public class OpenCLMiner : IDisposable
     {
-        private static readonly string KernelCodeH1 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL\opencl_device_info.h");
-        private static readonly string KernelCodeH2 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL\opencl_misc.h");
-        private static readonly string KernelCodeH3 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL\opencl_sha2_common.h");
-        private static readonly string KernelCodeH4 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL\opencl_sha512.h");
-        private static readonly string KernelCodeMain = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL\sha512_miner.cl");
+        private static readonly string KernelCodeH1 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL{Path.DirectorySeparatorChar}opencl_device_info.h");
+        private static readonly string KernelCodeH2 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL{Path.DirectorySeparatorChar}opencl_misc.h");
+        private static readonly string KernelCodeH3 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL{Path.DirectorySeparatorChar}opencl_sha2_common.h");
+        private static readonly string KernelCodeH4 = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL{Path.DirectorySeparatorChar}opencl_sha512.h");
+        private static readonly string KernelCodeMain = File.ReadAllText(@$"{AppContext.BaseDirectory}OpenCL{Path.DirectorySeparatorChar}sha512_miner.cl");
         private const string KernelFunction = "kernel_find_pow";
 
         private readonly ILogger logger;
         private readonly ComputeDevice computeDevice;
 
-        private List<ComputeKernel> computeKernels;
+        private List<ComputeKernel> computeKernels = new List<ComputeKernel>();
         private ComputeProgram computeProgram;
         private ComputeContext computeContext;
         private ComputeKernel computeKernel;
@@ -88,10 +88,10 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
 
             using var commands = new ComputeCommandQueue(this.computeContext, this.computeDevice, ComputeCommandQueueFlags.None);
             commands.Execute(this.computeKernel, null, new long[] { iterations }, null, null);
-            commands.Finish();
 
             var nonceOut = new uint[1];
-            commands.ReadFromBuffer(powBuffer, ref nonceOut, false, null);
+            commands.ReadFromBuffer(powBuffer, ref nonceOut, true, null);
+            commands.Finish();
 
             this.DisposeOpenCLResources();
 
@@ -114,8 +114,11 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         private void DisposeOpenCLResources()
         {
             this.computeKernels.ForEach(k => k.Dispose());
-            this.computeProgram.Dispose();
+            this.computeKernels.Clear();
+            this.computeProgram?.Dispose();
+            this.computeProgram = null;
             this.computeContext.Dispose();
+            this.computeContext = null;
         }
 
         public void Dispose()
