@@ -38,9 +38,11 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <inheritdoc />
         public BlockTemplate BuildPowBlock(ChainedHeader chainTip, Script script)
         {
-            if (this.network.Consensus.IsProofOfStake)
+            // when building a PoW block in a permanent PoS + PoW network (PosPowOptions is not null),  use the Bitcoin two week difficulty retarget.
+            if (this.network.Consensus.IsProofOfStake && !this.network.Consensus.LongPosPowPowDifficultyAdjustments)
                 return this.posPowBlockDefinition.Build(chainTip, script);
 
+            // XDS will choose this execution path.
             return this.powBlockDefinition.Build(chainTip, script);
         }
 
