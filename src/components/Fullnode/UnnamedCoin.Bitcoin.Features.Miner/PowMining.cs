@@ -44,53 +44,53 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         //const int InnerLoopCount = 10_000_000;
 
         /// <summary>Factory for creating background async loop tasks.</summary>
-        readonly IAsyncProvider asyncProvider;
+        private readonly IAsyncProvider asyncProvider;
 
         /// <summary>Builder that creates a proof-of-work block template.</summary>
-        readonly IBlockProvider blockProvider;
+        private readonly IBlockProvider blockProvider;
 
         /// <summary>Thread safe chain of block headers from genesis.</summary>
-        readonly ChainIndexer chainIndexer;
+        private readonly ChainIndexer chainIndexer;
 
         /// <summary>Manager of the longest fully validated chain of blocks.</summary>
-        readonly IConsensusManager consensusManager;
+        private readonly IConsensusManager consensusManager;
 
         /// <summary>Provider of time functions.</summary>
-        readonly IDateTimeProvider dateTimeProvider;
+        private readonly IDateTimeProvider dateTimeProvider;
 
-        readonly IInitialBlockDownloadState initialBlockDownloadState;
+        private readonly IInitialBlockDownloadState initialBlockDownloadState;
         private readonly MinerSettings minerSettings;
 
         /// <summary>Instance logger.</summary>
-        readonly ILogger logger;
+        private readonly ILogger logger;
 
         /// <summary>Factory for creating loggers.</summary>
-        readonly ILoggerFactory loggerFactory;
+        private readonly ILoggerFactory loggerFactory;
 
         /// <summary>Transaction memory pool for managing transactions in the memory pool.</summary>
-        readonly ITxMempool mempool;
+        private readonly ITxMempool mempool;
 
         /// <summary>A lock for managing asynchronous access to memory pool.</summary>
-        readonly MempoolSchedulerLock mempoolLock;
+        private readonly MempoolSchedulerLock mempoolLock;
 
         /// <summary>Specification of the network the node runs on - regtest/testnet/mainnet.</summary>
-        readonly Network network;
+        private readonly Network network;
 
         /// <summary>Global application life cycle control - triggers when application shuts down.</summary>
-        readonly INodeLifetime nodeLifetime;
+        private readonly INodeLifetime nodeLifetime;
 
-        uint256 hashPrevBlock;
+        private uint256 hashPrevBlock;
 
         /// <summary>
         ///     A cancellation token source that can cancel the mining processes and is linked to the
         ///     <see cref="INodeLifetime.ApplicationStopping" />.
         /// </summary>
-        CancellationTokenSource miningCancellationTokenSource;
+        private CancellationTokenSource miningCancellationTokenSource;
 
         /// <summary>The async loop we need to wait upon before we can shut down this feature.</summary>
-        IAsyncLoop miningLoop;
+        private IAsyncLoop miningLoop;
 
-        OpenCLMiner openCLMiner;
+        private OpenCLMiner openCLMiner;
 
         public PowMining(
             IAsyncProvider asyncProvider,
@@ -157,6 +157,13 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
                 {
                     // Issues constructing block or verifying it. Should not halt mining.
                     this.logger.LogDebug("Consensus error exception occurred in miner loop: {0}", cee.ToString());
+                }
+                catch (ConsensusException ce)
+                {
+                    // All consensus exceptions should be ignored. It means that the miner
+                    // run into problems while constructing block or verifying it
+                    // but it should not halted the staking operation.
+                    this.logger.LogDebug("Consensus exception occurred in miner loop: {0}", ce.ToString());
                 }
                 catch
                 {
@@ -236,7 +243,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <summary>
         ///     Ensures that the node is synced before mining is allowed to start.
         /// </summary>
-        bool ConsensusIsAtTip(MineBlockContext context)
+        private bool ConsensusIsAtTip(MineBlockContext context)
         {
             this.miningCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -267,7 +274,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         ///         generation of blocks inside tests, where it is possible to generate multiple blocks within one second.
         ///     </para>
         /// </summary>
-        bool BuildBlock(MineBlockContext context)
+        private bool BuildBlock(MineBlockContext context)
         {
             if (context.BlockTemplate == null)
                 context.BlockTemplate = this.blockProvider.BuildPowBlock(context.ChainTip, context.ReserveScript.ReserveFullNodeScript);
@@ -279,7 +286,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             return true;
         }
 
-        bool MineBlock(MineBlockContext context)
+        private bool MineBlock(MineBlockContext context)
         {
             if (minerSettings.UseOpenCL && openCLMiner.CanMine())
                 return MineBlockOpenCL(context);
@@ -287,7 +294,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
                 return MineBlockCpu(context);
         }
 
-        bool MineBlockOpenCL(MineBlockContext context)
+        private bool MineBlockOpenCL(MineBlockContext context)
         {
             var block = context.BlockTemplate.Block;
             block.Header.Nonce = 0;
@@ -328,7 +335,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <summary>
         ///     Executes until the required work (difficulty) has been reached. This is the "mining" process.
         /// </summary>
-        bool MineBlockCpu(MineBlockContext context)
+        private bool MineBlockCpu(MineBlockContext context)
         {
             context.ExtraNonce = IncrementExtraNonce(context.BlockTemplate.Block, context.ChainTip, context.ExtraNonce);
 
@@ -429,7 +436,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <summary>
         ///     Ensures that the block was properly mined by checking the block's work against the next difficulty target.
         /// </summary>
-        bool ValidateMinedBlock(MineBlockContext context)
+        private bool ValidateMinedBlock(MineBlockContext context)
         {
             var chainedHeader = new ChainedHeader(context.BlockTemplate.Block.Header,
                 context.BlockTemplate.Block.GetHash(), context.ChainTip);
@@ -447,7 +454,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         ///         On successful block validation the block will be connected to the chain.
         ///     </para>
         /// </summary>
-        bool ValidateAndConnectBlock(MineBlockContext context)
+        private bool ValidateAndConnectBlock(MineBlockContext context)
         {
             var chainedHeader = this.consensusManager.BlockMinedAsync(context.BlockTemplate.Block).GetAwaiter()
                 .GetResult();
@@ -463,7 +470,7 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             return true;
         }
 
-        void OnBlockMined(MineBlockContext context)
+        private void OnBlockMined(MineBlockContext context)
         {
             this.logger.LogInformation("==================================================================");
 
@@ -481,9 +488,9 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         /// <summary>
         ///     Context class that holds information on the current state of the mining process (per block).
         /// </summary>
-        class MineBlockContext
+        private class MineBlockContext
         {
-            readonly ulong amountOfBlocksToMine;
+            private readonly ulong amountOfBlocksToMine;
             public readonly ReserveScript ReserveScript;
             public readonly List<uint256> Blocks = new List<uint256>();
 
