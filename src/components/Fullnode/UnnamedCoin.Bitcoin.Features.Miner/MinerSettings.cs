@@ -33,8 +33,13 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
 
             this.Mine = config.GetOrDefault("mine", false, this.logger);
             if (this.Mine)
+            {
                 this.MineAddress = config.GetOrDefault<string>("mineaddress", null, this.logger);
-            this.MineThreadCount = config.GetOrDefault<int>("minethreads", 1, this.logger);
+                this.MineThreadCount = config.GetOrDefault<int>("minethreads", 1, this.logger);
+                this.UseOpenCL = config.GetOrDefault<bool>("useopencl", false, this.logger);
+                this.OpenCLDevice = config.GetOrDefault<string>("opencldevice", null, this.logger);
+                this.OpenCLWorksizeSplit = config.GetOrDefault<int>("openclworksizesplit", 10, this.logger);
+            }
 
             this.Stake = config.GetOrDefault("stake", false, this.logger);
             if (this.Stake)
@@ -93,6 +98,22 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
         public int MineThreadCount { get; }
 
         /// <summary>
+        /// Use a GPU to mine if available, Default true.
+        /// </summary>
+        public bool UseOpenCL { get; }
+
+        /// <summary>
+        /// The name of the OpenCLDevice to use. Default is first one found.
+        /// </summary>
+        public string OpenCLDevice { get; set; }
+
+        /// <summary>
+        /// Amount to split the work to send to the OpenCL device.
+        /// Experiment with this value to find the optimum between a short execution time and big hash rate.
+        /// </summary>
+        public int OpenCLWorksizeSplit { get; }
+
+        /// <summary>
         ///     If true this will only allow staking coins that have been flaged.
         /// </summary>
         public bool EnforceStakingFlag { get; }
@@ -127,12 +148,13 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             var builder = new StringBuilder();
 
             builder.AppendLine("-mine=<0 or 1>                      Enable POW mining.");
-            builder.AppendLine("-stake=<0 or 1>                     Enable POS.");
             builder.AppendLine("-mineaddress=<string>               The address to use for mining (empty string to select an address from the wallet).");
             builder.AppendLine("-minethreads=1                      Total threads to mine on (default 1).");
+            builder.AppendLine("-useopencl=<0 or 1>                 Use OpenCL for POW mining (default 0)");
+            builder.AppendLine("-opencldevice=<string>              Name of the OpenCL device to use (default first available).");
+            builder.AppendLine("-openclworksizesplit=<number>       Amount to split the work to send to the OpenCL device. Experiment with this value to find the optimum between a short execution time and big hash rate.");
 
-            builder.AppendLine("-mine=<0 or 1>                      Enable POW mining.");
-
+            builder.AppendLine("-stake=<0 or 1>                     Enable POS.");
             builder.AppendLine("-walletname=<string>                The wallet name to use when staking.");
             builder.AppendLine("-walletpassword=<string>            Password to unlock the wallet.");
             builder.AppendLine(
@@ -168,6 +190,12 @@ namespace UnnamedCoin.Bitcoin.Features.Miner
             builder.AppendLine("#mineaddress=<string>");
             builder.AppendLine("#Total threads to mine on (default 1)..");
             builder.AppendLine("#minethreads=1");
+            builder.AppendLine("#Use OpenCL for POW mining.");
+            builder.AppendLine("#useopencl=0");
+            builder.AppendLine("#Name of the OpenCL device to use (defaults to first available).");
+            builder.AppendLine("#opencldevice=<string>");
+            builder.AppendLine("#Amount to split the work to send to the OpenCL device. Experiment with this value to find the optimum between a short execution time and big hash rate.");
+            builder.AppendLine("#openclworksizesplit=10");
             builder.AppendLine("#The wallet name to use when staking.");
             builder.AppendLine("#walletname=<string>");
             builder.AppendLine("#Password to unlock the wallet.");

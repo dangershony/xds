@@ -5,10 +5,46 @@
     <RuntimeFrameworkVersion>2.2.7</RuntimeFrameworkVersion>
     <AssemblyName>UnnamedCoin.Bitcoin.Features.Miner</AssemblyName>
     <Platforms>AnyCPU;x64</Platforms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>8</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="OpenCL\Cloo.dll.config" />
+    <None Remove="OpenCL\opencl_device_info.h" />
+    <None Remove="OpenCL\opencl_misc.h" />
+    <None Remove="OpenCL\opencl_sha2_common.h" />
+    <None Remove="OpenCL\opencl_sha512.h" />
+    <None Remove="OpenCL\sha512_miner.cl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Cloo.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="OpenCL\opencl_device_info.h">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="OpenCL\opencl_misc.h">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="OpenCL\opencl_sha2_common.h">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="OpenCL\opencl_sha512.h">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="OpenCL\sha512_miner.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.2.0" />
+    <PackageReference Include="Cloo.clSharp" Version="1.0.1" />
   </ItemGroup>
 
   <ItemGroup>
