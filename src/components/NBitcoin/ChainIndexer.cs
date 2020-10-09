@@ -27,7 +27,12 @@ namespace NBitcoin
         {
             this.Network = network;
 
-            Initialize(new ChainedHeader(network.GetGenesis().Header, network.GetGenesis().GetHash(), 0));
+            ChainedHeader chainedHeader;
+            if (network.Consensus.UsePosPowScaling)
+                chainedHeader = new PosPowChainedHeader(network.GetGenesis().Header, network.GetGenesis().GetHash(), 0, network, this);
+            else 
+                chainedHeader = new ChainedHeader(network.GetGenesis().Header, network.GetGenesis().GetHash(), 0);
+            Initialize(chainedHeader);
         }
 
         public ChainIndexer(Network network, ChainedHeader chainedHeader) : this()
@@ -187,7 +192,7 @@ namespace NBitcoin
             }
         }
 
-      
+
         public void Add(ChainedHeader addTip)
         {
             lock (this.lockObject)
@@ -202,7 +207,7 @@ namespace NBitcoin
             }
         }
 
-      
+
         public void Remove(ChainedHeader removeTip)
         {
             lock (this.lockObject)

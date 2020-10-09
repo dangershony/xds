@@ -133,5 +133,11 @@ namespace NBitcoin
 
         /// <summary>Group of mempool validation rules used by the given network.</summary>
         List<Type> MempoolRules { get; set; }
+
+        /// <summary>PoS-to-PoW economy balancing.</summary>
+        bool UsePosPowScaling { get; set; }
+
+        /// <summary>Use long difficulty adjustment intervals in PoS + PoW networks.</summary>
+        bool LongPosPowPowDifficultyAdjustments { get; set; }
     }
 }

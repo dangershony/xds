@@ -161,5 +161,12 @@ namespace NBitcoin
 
         /// <inheritdoc />
         public List<Type> MempoolRules { get; set; }
+
+        /// <inheritdoc />
+        public bool UsePosPowScaling { get; set; }
+
+        /// <inheritdoc />
+        public bool LongPosPowPowDifficultyAdjustments { get; set; }
+       
     }
 }

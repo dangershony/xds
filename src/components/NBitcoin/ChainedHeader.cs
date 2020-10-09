@@ -64,7 +64,7 @@ namespace NBitcoin
         static readonly BigInteger Pow256 = BigInteger.ValueOf(2).Pow(256);
 
         /// <summary>Integer representation of the <see cref="ChainWork" />.</summary>
-        BigInteger chainWork;
+        protected BigInteger chainWork;
 
         /// <summary>
         ///     Constructs a chained block.
@@ -150,6 +150,9 @@ namespace NBitcoin
         /// <summary>Total amount of work in the chain up to and including this block.</summary>
         public uint256 ChainWork => Target.ToUInt256(this.chainWork);
 
+        /// <summary>Total amount of work in the chain up to and including this block.</summary>
+        public BigInteger ChainWorkBigInteger => this.chainWork;
+
         /// <inheritdoc cref="BlockDataAvailabilityState" />
         public BlockDataAvailabilityState BlockDataAvailability { get; set; }
 
@@ -187,7 +190,7 @@ namespace NBitcoin
         /// <summary>
         ///     Calculates the total amount of work in the chain up to and including this block.
         /// </summary>
-        void CalculateChainWork()
+        protected virtual void CalculateChainWork()
         {
             this.chainWork = (this.Previous == null ? BigInteger.Zero : this.Previous.chainWork).Add(GetBlockProof());
         }

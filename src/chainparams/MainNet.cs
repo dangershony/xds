@@ -7,6 +7,7 @@ using ChainParams.Rules;
 using NBitcoin;
 using NBitcoin.BouncyCastle.math;
 using NBitcoin.DataEncoders;
+using UnnamedCoin.Bitcoin.Features.Consensus;
 using UnnamedCoin.Bitcoin.Features.Consensus.Rules.CommonRules;
 using UnnamedCoin.Bitcoin.Features.Consensus.Rules.ProvenHeaderRules;
 using UnnamedCoin.Bitcoin.Features.MemoryPool.Rules;
@@ -100,6 +101,8 @@ namespace ChainParams
                 proofOfStakeReward: Money.Coins(50),
                 posEmptyCoinbase: false);
 
+            this.Consensus.LongPosPowPowDifficultyAdjustments = true;
+            this.Consensus.UsePosPowScaling = true;
 
             this.StandardScriptsRegistry = new MainNetStandardScriptsRegistry();
 
